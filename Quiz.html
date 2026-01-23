@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Past Simple - Word Order Game</title>
+    <style>
+        :root {
+            --primary: #4a90e2;
+            --accent: #9b59b6;
+            --bg: #f0f4f8;
+            --card: #ffffff;
+            --word-bg: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .formula-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 100%;
+            max-width: 500px; /* Оптимально для мобильных */
+            border: 3px solid var(--primary);
+            box-sizing: border-box;
+        }
+
+        /* Адаптивная сетка формулы */
+        .formula-flex {
+            display: flex;
+            align-items: center;
+            justify-content: space-around;
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+
+        .box {
+            padding: 8px;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+        }
+
+        .avatars-box { background: #e1effe; min-height: 100px; }
+        .avatar { width: 50px; height: 70px; object-fit: contain; }
+
+        .operator { font-size: 24px; font-weight: bold; color: #94a3b8; }
+
+        .place-box {
+            background: #fef3c7;
+            border: 2px dashed #f59e0b;
+        }
+
+        .place-emoji { font-size: 30px; }
+        .place-text { font-weight: bold; color: #b45309; text-transform: uppercase; font-size: 10px; margin-top: 5px; }
+
+        .sign-box {
+            width: 45px; height: 45px;
+            background: var(--accent);
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        /* Игровая зона */
+        .game-container {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8fafc;
+            border-radius: 20px;
+            border: 2px solid #e2e8f0;
+        }
+
+        .drop-zone, .word-pool {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            min-height: 45px;
+            padding: 10px;
+        }
+
+        .drop-zone {
+            border-bottom: 2px solid var(--primary);
+            background: #fff;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .word-chip {
+            padding: 10px 14px;
+            background: var(--word-bg);
+            border-radius: 10px;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 600;
+            font-size: 16px;
+            transition: transform 0.1s;
+            touch-action: manipulation; /* Улучшает клики на мобильных */
+        }
+
+        .word-chip:active { transform: scale(0.95); }
+
+        #feedback {
+            height: 25px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .controls { display: flex; gap: 10px; }
+        .btn {
+            flex: 1; padding: 15px; border: none; border-radius: 12px;
+            font-size: 16px; font-weight: bold; cursor: pointer;
+        }
+        .btn-clear { background: #94a3b8; color: white; }
+        .btn-next { background: var(--primary); color: white; }
+
+        /* Для совсем маленьких экранов */
+        @media (max-width: 380px) {
+            .avatar { width: 40px; height: 60px; }
+            .place-emoji { font-size: 24px; }
+            .word-chip { padding: 8px 10px; font-size: 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="formula-card">
+    <div class="formula-flex">
+        <div class="box avatars-box" id="avatars"></div>
+        <div class="operator">+</div>
+        <div class="box place-box">
+            <span class="place-emoji" id="place-emoji">🏫</span>
+            <span class="place-text" id="place-name">at school</span>
+        </div>
+        <div class="operator">+</div>
+        <div class="sign-box" id="sign">?</div>
+    </div>
+
+    <div class="game-container">
+        <div id="feedback"></div>
+        <div class="drop-zone" id="user-sentence" onclick="undoWord()"></div>
+        <div class="word-pool" id="word-pool"></div>
+        
+        <div class="controls">
+            <button class="btn btn-clear" onclick="clearSentence()">Reset</button>
+            <button class="btn btn-next" onclick="generate()">Next →</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const kids = [
+        {n: 'Alex', g: 'He', ext: '.jpg'}, {n: 'Alice', g: 'She', ext: '.jpg'},
+        {n: 'Dasha', g: 'She', ext: '.jpg'}, {n: 'Diana', g: 'She', ext: '.jpg'},
+        {n: 'Dima', g: 'He', ext: '.jpg'}, {n: 'Igor', g: 'He', ext: '.png'},
+        {n: 'Ivan', g: 'He', ext: '.png'}, {n: 'Katerina', g: 'She', ext: '.png'},
+        {n: 'Katya', g: 'She', ext: '.png'}, {n: 'Kira', g: 'She', ext: '.jpg'},
+        {n: 'Kirill', g: 'He', ext: '.png'}, {n: 'Makar', g: 'He', ext: '.jpg'},
+        {n: 'Masha', g: 'She', ext: '.png'}, {n: 'Matvey', g: 'He', ext: '.png'},
+        {n: 'Nikita', g: 'He', ext: '.jpg'}, {n: 'Semyon', g: 'He', ext: '.jpg'},
+        {n: 'Svyatoslav', g: 'He', ext: '.png'}, {n: 'Yaroslav', g: 'He', ext: '.png'}
+    ];
+
+    const places = [
+        { name: "at home", emo: "🏠" }, { name: "at school", emo: "🏫" },
+        { name: "at work", emo: "💼" }, { name: "at my uncle's house", emo: "🏡" },
+        { name: "at the cafe", emo: "🍴" }, { name: "at the cinema", emo: "🎬" },
+        { name: "at the circus", emo: "🎪" }, { name: "at the hospital", emo: "🏥" },
+        { name: "at the party", emo: "🥳" }, { name: "at the shops", emo: "🛍️" },
+        { name: "at the theatre", emo: "🎭" }, { name: "at the zoo", emo: "🦁" },
+        { name: "at the museum", emo: "🏛️" }, { name: "in bed", emo: "🛌" },
+        { name: "in London", emo: "🎡" }, { name: "in the garden", emo: "🌻" },
+        { name: "in the room", emo: "🛋️" }, { name: "in the park", emo: "⛲" },
+        { name: "on holiday", emo: "🏖️" }, { name: "with my friend", emo: "👫" }
+    ];
+
+    let correctSentence = [];
+    let currentPool = [];
+
+    function generate() {
+        document.getElementById('feedback').innerText = "";
+        clearSentence();
+
+        const isPlural = Math.random() > 0.5;
+        const selected = [...kids].sort(() => 0.5 - Math.random()).slice(0, isPlural ? 2 : 1);
+        
+        // Отрисовка персонажей
+        const avBox = document.getElementById('avatars');
+        avBox.innerHTML = "";
+        selected.forEach(k => {
+            const img = document.createElement('img');
+            img.src = `images/${k.n}${k.ext}`;
+            img.className = 'avatar';
+            img.onerror = () => img.src = `https://via.placeholder.com/90x110?text=${k.n}`;
+            avBox.appendChild(img);
+        });
+
+        const place = places[Math.floor(Math.random() * places.length)];
+        document.getElementById('place-emoji').innerText = place.emo;
+        document.getElementById('place-name').innerText = place.name;
+
+        const sign = ["+", "-", "?"][Math.floor(Math.random() * 3)];
+        document.getElementById('sign').innerText = sign;
+
+        // Построение эталонного массива слов (нижний регистр, полные формы)
+        const subj = isPlural ? "they" : selected[0].g.toLowerCase();
+        let sentenceStr = "";
+
+        if (sign === "+") {
+            sentenceStr = isPlural ? `they were ${place.name}` : `${subj} was ${place.name}`;
+        } else if (sign === "-") {
+            sentenceStr = isPlural ? `they were not ${place.name}` : `${subj} was not ${place.name}`;
+        } else {
+            const verb = isPlural ? "were" : "was";
+            sentenceStr = `${verb} ${subj} ${place.name} ?`; // Знак вопроса отделен пробелом
+        }
+
+        correctSentence = sentenceStr.toLowerCase().split(' ').filter(w => w !== "");
+        currentPool = [...correctSentence].sort(() => 0.5 - Math.random());
+        renderPool();
+    }
+
+    function renderPool() {
+        const poolEl = document.getElementById('word-pool');
+        poolEl.innerHTML = "";
+        currentPool.forEach((word, index) => {
+            const span = document.createElement('div');
+            span.className = 'word-chip';
+            span.innerText = word;
+            span.onclick = (e) => { e.stopPropagation(); selectWord(index); };
+            poolEl.appendChild(span);
+        });
+    }
+
+    function selectWord(index) {
+        const word = currentPool.splice(index, 1)[0];
+        const dropZone = document.getElementById('user-sentence');
+        const span = document.createElement('div');
+        span.className = 'word-chip';
+        span.innerText = word;
+        dropZone.appendChild(span);
+        renderPool();
+        checkResult();
+    }
+
+    function undoWord() {
+        const dropZone = document.getElementById('user-sentence');
+        if (dropZone.lastChild) {
+            const word = dropZone.lastChild.innerText;
+            dropZone.removeChild(dropZone.lastChild);
+            currentPool.push(word);
+            renderPool();
+            checkResult();
+        }
+    }
+
+    function clearSentence() {
+        document.getElementById('user-sentence').innerHTML = "";
+        document.getElementById('feedback').innerText = "";
+        generatePoolFromCorrect();
+    }
+
+    function generatePoolFromCorrect() {
+        currentPool = [...correctSentence].sort(() => 0.5 - Math.random());
+        renderPool();
+    }
+
+    function checkResult() {
+        const userWords = Array.from(document.getElementById('user-sentence').children).map(c => c.innerText);
+        const feedback = document.getElementById('feedback');
+
+        if (currentPool.length === 0 && userWords.length > 0) {
+            const isCorrect = JSON.stringify(userWords) === JSON.stringify(correctSentence);
+            feedback.innerText = isCorrect ? "Excellent! 🌟" : "Try again! 🔄";
+            feedback.style.color = isCorrect ? "#10b981" : "#ef4444";
+        } else {
+            feedback.innerText = "";
+        }
+    }
+
+    generate();
+</script>
+
+</body>
+</html>
